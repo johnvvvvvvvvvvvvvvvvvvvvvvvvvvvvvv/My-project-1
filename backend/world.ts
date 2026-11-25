@@ -5,7 +5,8 @@ export type BodyId = number & { readonly __brand: 'BodyId' };
 export type Shape =
   | { kind: 'box'; halfExtents: Vec3 }
   | { kind: 'sphere'; radius: number }
-  | { kind: 'cylinder'; halfHeight: number; radius: number }
+  /** axis: محور الأسطوانة في إطار الجسم (الافتراضي y). العجلات تستخدم z. */
+  | { kind: 'cylinder'; halfHeight: number; radius: number; axis?: 'x' | 'y' | 'z' }
   | { kind: 'plane' };
 
 export type BodyType = 'static' | 'dynamic' | 'kinematic';
@@ -17,6 +18,25 @@ export interface BodyDescriptor {
   mass?: number;
   friction?: number;
   restitution?: number;
+}
+
+export type JointId = number & { readonly __brand: 'JointId' };
+
+/** مفصل دوّار: محور واحد؛ المرساتان والمحور بإحداثيات كل جسم المحلية (يجب أن تتوازى الأطر). */
+export interface RevoluteJointDescriptor {
+  bodyA: BodyId;
+  bodyB: BodyId;
+  anchorA: Vec3;
+  anchorB: Vec3;
+  axis: Vec3;
+}
+
+/** مفصل كروي (دوران حر حول نقطة)، يصلح لعجلة الكاستر. */
+export interface SphericalJointDescriptor {
+  bodyA: BodyId;
+  bodyB: BodyId;
+  anchorA: Vec3;
+  anchorB: Vec3;
 }
 
 export interface Body {
@@ -63,6 +83,13 @@ export interface World {
   readonly time: number;
   addBody(descriptor: BodyDescriptor): Body;
   removeBody(id: BodyId): void;
+  getBodyTransform(id: BodyId): Transform | undefined;
+  addRevoluteJoint(descriptor: RevoluteJointDescriptor): JointId;
+  addSphericalJoint(descriptor: SphericalJointDescriptor): JointId;
+  /** سرعة B بالنسبة لـA حول محور المفصل (راديان/ثانية)، الموجب مع اتجاه المحور. */
+  jointVelocity(id: JointId): number;
+  /** عزم (نيوتن.متر) على B بمحور المفصل وعكسه على A، يُطبَّق لخطوة فيزياء واحدة. */
+  applyJointTorque(id: JointId, torque: number): void;
   /** يتقدم خطوة ثابتة واحدة (1 / physicsHz). */
   step(): void;
   raycast(ray: Ray): RayHit | null;

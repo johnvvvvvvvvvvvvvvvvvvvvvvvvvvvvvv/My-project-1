@@ -1,4 +1,13 @@
-import type { BodyDescriptor, WorldConfig } from './world';
+import type { RobotGeometry, RobotSpec, RobotTelemetry } from './robot';
+import type { BodyDescriptor, Shape, WorldConfig } from './world';
+
+/** جسم من أجسام الروبوت كما يراه الرسم. */
+export interface RobotBodyInfo {
+  slot: number;
+  role: 'chassis' | 'wheel-left' | 'wheel-right' | 'caster';
+  shape: Shape;
+  color: number;
+}
 
 /* ------------------------------------------------------------------ *
  * الرسائل بين الصفحة (Main) وworker المحاكاة (Sim).
@@ -9,6 +18,9 @@ export type MainToSim =
   | { type: 'init'; config: WorldConfig; stateBuffer: SharedArrayBuffer }
   | { type: 'addBody'; requestId: number; descriptor: BodyDescriptor }
   | { type: 'removeBody'; id: number }
+  | { type: 'addRobot'; requestId: number; spec: RobotSpec }
+  | { type: 'removeRobot'; robotId: number }
+  | { type: 'setMotorTargets'; robotId: number; targets: Record<string, number> }
   | { type: 'setSpeed'; multiplier: number }
   | { type: 'pause' }
   | { type: 'resume' }
@@ -20,6 +32,16 @@ export type SimToMain =
   | { type: 'ready' }
   | { type: 'bodyAdded'; requestId: number; id: number; slot: number }
   | { type: 'stats'; stepMs: number; stepsPerSecond: number; time: number }
+  | {
+      type: 'robotAdded';
+      requestId: number;
+      robotId: number;
+      bodies: RobotBodyInfo[];
+      motorIds: string[];
+      geometry: RobotGeometry;
+    }
+  | { type: 'robotFailed'; requestId: number; message: string }
+  | { type: 'telemetry'; robots: RobotTelemetry[] }
   | { type: 'error'; message: string };
 
 /* ------------------------------------------------------------------ *

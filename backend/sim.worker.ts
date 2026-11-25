@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { FixedStepClock } from './clock';
 import type { MainToSim, SimToMain } from './protocol';
+import { Robot, robotGeometry, validateRobotSpec } from './robot';
 import { RapierWorld } from './rapier-world';
 import { SharedStateWriter } from './shared-state';
 import type { BodyId, WorldConfig } from './world';
@@ -12,6 +13,9 @@ let world: RapierWorld | null = null;
 let writer: SharedStateWriter | null = null;
 let clock: FixedStepClock | null = null;
 let config: WorldConfig | null = null;
+const robots = new Map<number, Robot>();
+let nextRobotId = 1;
+let lastTelemetry = 0;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let lastNow = 0;
@@ -28,10 +32,19 @@ function tick(): void {
     const n = clock.advance(dt);
     if (n > 0) {
       const t0 = performance.now();
-      for (let i = 0; i < n; i++) world.step();
+      const dt = 1 / world.config.physicsHz;
+      for (let i = 0; i < n; i++) {
+        // المحركات تعمل بنفس تردد الفيزياء، قبل كل خطوة
+        for (const robot of robots.values()) robot.update(world, dt);
+        world.step();
+      }
       world.writeState(writer);
       statMs += performance.now() - t0;
       statSteps += n;
+    }
+    if (robots.size > 0 && now - lastTelemetry >= 100) {
+      lastTelemetry = now;
+      post({ type: 'telemetry', robots: [...robots.values()].map((r) => r.telemetry(world!)) });
     }
     const elapsed = now - statStart;
     if (elapsed >= 500) {
@@ -81,6 +94,43 @@ async function handle(msg: MainToSim): Promise<void> {
       world.writeState(writer);
       return;
     }
+    case 'addRobot': {
+      if (!world || !writer) throw new Error('not initialized');
+      try {
+        const spec = validateRobotSpec(msg.spec);
+        const robotId = nextRobotId++;
+        const robot = Robot.build(world, spec, robotId);
+        robots.set(robotId, robot);
+        world.writeState(writer);
+        post({
+          type: 'robotAdded',
+          requestId: msg.requestId,
+          robotId,
+          bodies: robot.bodies.map((b) => ({
+            slot: world!.slotOf(b.id) ?? -1,
+            role: b.role,
+            shape: b.shape,
+            color: b.color,
+          })),
+          motorIds: robot.motorIds,
+          geometry: robotGeometry(spec),
+        });
+      } catch (e) {
+        post({ type: 'robotFailed', requestId: msg.requestId, message: e instanceof Error ? e.message : String(e) });
+      }
+      return;
+    }
+    case 'removeRobot': {
+      const robot = robots.get(msg.robotId);
+      if (!robot || !world || !writer) return;
+      robot.remove(world);
+      robots.delete(msg.robotId);
+      world.writeState(writer);
+      return;
+    }
+    case 'setMotorTargets':
+      robots.get(msg.robotId)?.setTargets(msg.targets);
+      return;
     case 'setSpeed':
       clock?.setSpeed(msg.multiplier);
       return;
@@ -96,6 +146,7 @@ async function handle(msg: MainToSim): Promise<void> {
     case 'reset': {
       if (!config || !writer) return;
       world?.dispose();
+      robots.clear();
       world = await RapierWorld.create(config);
       writer.begin();
       writer.clearAll();
