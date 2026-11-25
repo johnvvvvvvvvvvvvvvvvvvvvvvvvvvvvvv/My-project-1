@@ -1,5 +1,5 @@
 {
-  "name": "robosim",
+  "name": "my-project-1",,
   "compatibility_date": "2026-11-24",
   // موقع ثابت فقط. ترويسات COOP/COEP تأتي من dist/_headers (أصلها frontend/public/_headers)
   "assets": { "directory": "./dist" }
