@@ -13,13 +13,15 @@
       td { padding: .15rem .6rem; border-bottom: 1px solid var(--line); }
       #controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; align-items: center; }
       button, select { font: inherit; padding: .3rem .7rem; }
-      canvas { width: 100%; max-width: 960px; aspect-ratio: 16 / 9; border: 1px solid var(--line); display: block; }
-      #stats { font-variant-numeric: tabular-nums; direction: ltr; text-align: left; margin-top: .5rem; font-family: monospace; font-size: .85rem; }
+      canvas { width: 100%; max-width: 1100px; aspect-ratio: 16 / 9; border: 1px solid var(--line); display: block; touch-action: none; }
+      #stats { font-variant-numeric: tabular-nums; direction: ltr; text-align: left; margin-top: .5rem; font-family: monospace; font-size: .85rem; white-space: pre; }
+      #sel-label { font-size: .85rem; opacity: .8; }
+      #telemetry { font-variant-numeric: tabular-nums; direction: ltr; text-align: left; font-family: monospace; font-size: .85rem; white-space: pre; min-height: 3.2em; }
       #error { color: var(--bad); font-weight: bold; }
     </style>
   </head>
   <body>
-    <h1>RoboSim — المرحلة 1: نواة المحاكاة</h1>
+    <h1>RoboSim — المرحلة 3: الروبوت الأول والمحركات</h1>
     <div id="env"></div>
     <div id="error"></div>
     <div id="demo" hidden>
@@ -35,11 +37,28 @@
             <option value="4">4×</option>
           </select>
         </label>
-        <button id="btn-add">+50 صندوق</button>
+        <button id="btn-add">+20 صندوق</button>
+        <button id="btn-add-balls">+20 كرة</button>
         <button id="btn-reset">إعادة تعيين</button>
+        <label>الجودة <select id="sel-quality"></select></label>
       </div>
-      <canvas id="view" width="960" height="540"></canvas>
+      <div id="controls">
+        <button id="btn-follow">تتبع المحدد</button>
+        <button id="btn-cam-reset">إعادة الكاميرا</button>
+        <span id="sel-label"></span>
+        <span style="opacity:.6;font-size:.8rem">سحب: تدوير · عجلة: تقريب · سحب يمين: تحريك</span>
+      </div>
+      <div id="controls">
+        <strong>الروبوت:</strong>
+        <button id="btn-robot-reset">إعادة الروبوت</button>
+        <button id="btn-spec-download">تنزيل المواصفات</button>
+        <label>تحميل مواصفات <input id="file-spec" type="file" accept=".json,application/json" /></label>
+        <span id="spec-msg"></span>
+      </div>
+      <div style="font-size:.85rem;opacity:.75">القيادة: W/S أو ↑/↓ أمام/خلف · A/D أو ←/→ دوران · Space كبح · Shift أسرع</div>
+      <canvas id="view" ></canvas>
       <div id="stats"></div>
+      <div id="telemetry"></div>
     </div>
     <script type="module" src="./main.ts"></script>
   </body>
